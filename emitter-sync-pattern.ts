@@ -57,32 +57,44 @@ function init() {
   time MAX_EVENTS have been fired.
 
 */
-
 class EventHandler extends EventStatistics<EventName> {
-  // Feel free to edit this class
-
   repository: EventRepository;
 
   constructor(emitter: EventEmitter<EventName>, repository: EventRepository) {
     super();
     this.repository = repository;
 
-    emitter.subscribe(EventName.EventA, () =>
-      this.repository.saveEventData(EventName.EventA, 1)
-    );
+    // Подписка на события и обновление локальных статистик
+    emitter.subscribe(EventName.EventA, () => {
+      const currentCount = this.getStats(EventName.EventA) + 1; // Получаем текущее количество
+      this.setStats(EventName.EventA, currentCount); // Обновление локальной статистики
+      this.repository.saveEventData(EventName.EventA, currentCount); // Синхронизация с репозиторием
+    });
+
+    emitter.subscribe(EventName.EventB, () => {
+      const currentCount = this.getStats(EventName.EventB) + 1; // Получаем текущее количество
+      this.setStats(EventName.EventB, currentCount); // Обновление локальной статистики
+      this.repository.saveEventData(EventName.EventB, currentCount); // Синхронизация с репозиторием
+    });
   }
 }
 
 class EventRepository extends EventDelayedRepository<EventName> {
-  // Feel free to edit this class
-
-  async saveEventData(eventName: EventName, _: number) {
+  async saveEventData(eventName: EventName, count: number) {
     try {
-      await this.updateEventStatsBy(eventName, 1);
+      await this.updateEventStatsBy(eventName, count); // Обновление статистики в репозитории
     } catch (e) {
+      // Обработка ошибок
       // const _error = e as EventRepositoryError;
       // console.warn(error);
     }
+  }
+
+  async updateEventStatsBy(eventName: EventName, by: number) {
+    // Обновляем статистику в репозитории
+    const currentCount = this.getStats(eventName) + by;
+    this.setStats(eventName, currentCount);
+    await super.updateEventStatsBy(eventName, by); // Вызов родительского метода
   }
 }
 
